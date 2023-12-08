@@ -1,0 +1,191 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "WebService stack."
+Metadata: {}
+
+Parameters:
+  Stage:
+    Type: "String"
+    Description: "Deployment stage, typically: [<alias>, desktop, beta, gamma, prod]."
+
+Rules: {}
+Conditions: {}
+Mappings: {}
+
+Resources:
+  ##
+  # API Gateway Resources
+  ##
+  RestAPI:
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      #ApiKeySourceType: String
+      #BinaryMediaTypes:
+      #  - String
+      #Body: Json
+      #BodyS3Location:
+      #  S3Location
+      #CloneFrom: String
+      Description: !Sub "${Stage}-WebService API Gateway RestAPI."
+      #DisableExecuteApiEndpoint: Boolean
+      #EndpointConfiguration:
+      #  EndpointConfiguration
+      #FailOnWarnings: Boolean
+      #MinimumCompressionSize: Integer
+      #Mode: String
+      Name: !Sub "${Stage}-WebService"
+      #Parameters:
+      #  Key: Value
+      #Policy: Json
+      #Tags:
+      #  - Tag
+
+  HelloWorldMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      #ApiKeyRequired: Boolean
+      #AuthorizationScopes:
+      #  - String
+      AuthorizationType: "NONE"
+      #AuthorizerId: String
+      HttpMethod: "POST"
+      Integration:
+        #CacheKeyParameters:
+        #  - String
+        #CacheNamespace: String
+        #ConnectionId: String
+        #ConnectionType: String
+        #ContentHandling: String
+        #Credentials: String
+        IntegrationHttpMethod: "POST"
+        #IntegrationResponses:
+        #  - IntegrationResponse
+        #PassthroughBehavior: String
+        #RequestParameters:
+        #  Key: Value
+        #RequestTemplates:
+        #  Key: Value
+        #TimeoutInMillis: Integer
+        Type: "AWS_PROXY"
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HelloWorldFunction.Arn}/invocations"
+      MethodResponses:
+        - #ResponseModels:
+          #  Key: Value
+          #ResponseParameters:
+          #  Key: Value
+          StatusCode: "200"
+        - #ResponseModels:
+          #  Key: Value
+          #ResponseParameters:
+          #  Key: Value
+          StatusCode: "400"
+        - #ResponseModels:
+          #  Key: Value
+          #ResponseParameters:
+          #  Key: Value
+          StatusCode: "403"
+        - #ResponseModels:
+          #  Key: Value
+          #ResponseParameters:
+          #  Key: Value
+          StatusCode: "500"
+      OperationName: !Sub "${Stage}-WebService/helloworld"
+      #RequestModels:
+      #  Key: Value
+      #RequestParameters:
+      #  Key: Value
+      #RequestValidatorId: String
+      ResourceId: !Ref "HelloWorldResource"
+      RestApiId: !Ref "RestAPI"
+
+  HelloWorldResource:
+    Type: "AWS::ApiGateway::Resource"
+    Properties:
+      ParentId: !GetAtt "RestAPI.RootResourceId"
+      PathPart: "helloworld"
+      RestApiId: !Ref "RestAPI"
+
+  ##
+  # IAM Resources
+  ##
+  LambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - 'sts:AssumeRole'
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+      Description: !Sub "${Stage}-WebService Lambda Execution Role."
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      #MaxSessionDuration: Integer
+      Path: !Sub "/${Stage}-webservice/iam/lambda/execution/role/"
+      #PermissionsBoundary: String
+      #Policies:
+      #  - Policy
+      RoleName: !Sub "${Stage}-LambdaExecutionRole"
+      #Tags:
+      #  - Tag
+
+  ##
+  # Lambda Resources
+  ##
+  HelloWorldFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Architectures:
+        - "x86_64"
+      Code: "../target/webservice.jar"
+      #CodeSigningConfigArn: String
+      #DeadLetterConfig:
+      #  DeadLetterConfig
+      Description: !Sub "${Stage}-WebService HelloWorld function."
+      #Environment:
+      #  Environment
+      #EphemeralStorage:
+      #  EphemeralStorage
+      #FileSystemConfigs:
+      #  - FileSystemConfig
+      FunctionName: !Sub "${Stage}-HelloWorldFunction"
+      Handler: "com.ethanpritchard.webservice.functions.HelloWorldFunction"
+      #ImageConfig:
+      #  ImageConfig
+      #KmsKeyArn: String
+      #Layers:
+      #  - String
+      #MemorySize: Integer
+      PackageType: "Zip"
+      #Policy: Json
+      #ReservedConcurrentExecutions: Integer
+      Role: !GetAtt "LambdaExecutionRole.Arn"
+      Runtime: "java8"
+      #RuntimeManagementConfig:
+      #  RuntimeManagementConfig
+      #SnapStart:
+      #  SnapStart
+      #Tags:
+      #  - Tag
+      Timeout: 300
+      TracingConfig:
+        Mode: "Active"
+      #VpcConfig:
+      #  VpcConfig
+
+  HelloWorldPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      #EventSourceToken: String
+      FunctionName: !Ref "HelloWorldFunction"
+      #FunctionUrlAuthType: String
+      Principal: "apigateway.amazonaws.com"
+      #PrincipalOrgID: String
+      SourceAccount: !Ref "AWS::AccountId"
+      #SourceArn: String
+
+Outputs: {}
